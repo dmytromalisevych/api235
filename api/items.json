@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "name": "iPhone 16 Pro Max",
+    "description": "Ціна: 70000 грн;\nВиробник: Apple;\nРейтинг: 4.4/5;\nМагазин: Ябко"
+  },
+  {
+    "id": 2,
+    "name": "MacBook Pro 2022 Retina",
+    "description": "Ціна: 60000 грн; \nВиробник: Apple; \nРейтинг: 4.7/5; \nМагазин: Ябко"
+  },
+  {
+    "id": 3,
+    "name": "Samsung Galaxy S24 Ultra",
+    "description": "Ціна: 50000 грн;\nВиробник: Samsung;\nРейтинг: 4.0/5;\nМагазин: Алло"
+  }
+]

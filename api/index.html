@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>СКП</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ffd700;
+            --secondary-color: #0057b8;
+            --text-dark: #2c3e50;
+            --text-light: #ffffff;
+            --success-color: #27ae60;
+            --error-color: #e74c3c;
+            --background-light: #f9fafb;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Ubuntu', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #003875 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--background-light);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--secondary-color);
+            position: relative;
+            padding-bottom: 1rem;
+        }
+
+        .header:after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        .form-container {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+
+        .form-title {
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(0, 87, 184, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--secondary-color);
+            color: var(--text-light);
+        }
+
+        .btn-primary:hover {
+            background: #004494;
+            transform: translateY(-1px);
+        }
+
+        .item-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .item-card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .item-title {
+            color: var(--secondary-color);
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .item-description {
+            color: var(--text-dark);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-edit {
+            background: var(--primary-color);
+            color: var(--text-dark);
+        }
+
+        .btn-edit:hover {
+            background: #e6c200;
+        }
+
+        .btn-delete {
+            background: var(--error-color);
+            color: var(--text-light);
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            display: none;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .success {
+            background: var(--success-color);
+        }
+
+        .error {
+            background: var(--error-color);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .item-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="header">СКП</h1>
+
+    <div id="notification" class="notification"></div>
+
+    <div class="form-container">
+        <h2 class="form-title" id="formTitle">Додати новий продукт</h2>
+        <form id="itemForm">
+            <input type="hidden" id="itemId">
+            <div class="form-group">
+                <label for="name">Назва продукту:</label>
+                <input type="text" id="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Інформація про продукт:</label>
+                <textarea id="description" class="form-control" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i>
+                <span>Зберегти</span>
+            </button>
+        </form>
+    </div>
+
+    <h2 class="form-title">Список збережених продуктів</h2>
+    <div id="itemsList" class="item-list"></div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:3000/api/items';
+    let editMode = false;
+
+    function showNotification(message, type) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        notification.style.display = 'block';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
+    }
+
+    async function fetchItems() {
+        try {
+            const response = await fetch(API_URL);
+            const items = await response.json();
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '';
+
+            items.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'item-card';
+                itemElement.innerHTML = `
+                    <div class="item-header">
+                        <h3 class="item-title">${item.name}</h3>
+                    </div>
+                    <p class="item-description">${item.description}</p>
+                    <div class="item-actions">
+                        <button class="btn btn-edit" onclick="editItem(${item.id})">
+                            <i class="fas fa-edit"></i>
+                            Редагувати
+                        </button>
+                        <button class="btn btn-delete" onclick="deleteItem(${item.id})">
+                            <i class="fas fa-trash-alt"></i>
+                            Видалити
+                        </button>
+                    </div>
+                `;
+                itemsList.appendChild(itemElement);
+            });
+        } catch (error) {
+            showNotification('Помилка завантаження елементів: ' + error.message, 'error');
+        }
+    }
+
+    document.getElementById('itemForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const itemId = document.getElementById('itemId').value;
+        const name = document.getElementById('name').value;
+        const description = document.getElementById('description').value;
+
+        const item = { name, description };
+        const url = itemId ? `${API_URL}/${itemId}` : API_URL;
+        const method = itemId ? 'PATCH' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(item),
+            });
+
+            if (response.ok) {
+                showNotification(
+                    itemId ? 'Елемент успішно оновлено!' : 'Елемент успішно додано!',
+                    'success'
+                );
+                document.getElementById('itemForm').reset();
+                document.getElementById('itemId').value = '';
+                document.getElementById('formTitle').textContent = 'Додати новий елемент';
+                editMode = false;
+                fetchItems();
+            } else {
+                throw new Error('Не вдалося зберегти елемент');
+            }
+        } catch (error) {
+            showNotification('Помилка збереження: ' + error.message, 'error');
+        }
+    });
+
+    async function editItem(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            const item = await response.json();
+
+            document.getElementById('itemId').value = item.id;
+            document.getElementById('name').value = item.name;
+            document.getElementById('description').value = item.description;
+            document.getElementById('formTitle').textContent = 'Редагувати елемент';
+            editMode = true;
+        } catch (error) {
+            showNotification('Помилка завантаження елемента: ' + error.message, 'error');
+        }
+    }
+
+    async function deleteItem(id) {
+        if (confirm('Ви впевнені, що хочете видалити цей елемент?')) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    showNotification('Елемент успішно видалено!', 'success');
+                    fetchItems();
+                } else {
+                    throw new Error('Не вдалося видалити елемент');
+                }
+            } catch (error) {
+                showNotification('Помилка видалення: ' + error.message, 'error');
+            }
+        }
+    }
+
+    fetchItems();
+</script>
+</body>
+</html>
