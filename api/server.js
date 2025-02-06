@@ -1,4 +1,6 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 const bodyParser = require('body-parser');
@@ -8,23 +10,98 @@ const path = require('path');
 
 const app = express();
 const STORAGE_FILE = path.join(__dirname, 'items.json');
+const USERS_FILE = path.join(__dirname, 'users.json');
+
+const SECRET_KEY = 'your-secret-key';
 
 app.use(cors());
 app.use(bodyParser.json());
 
-async function ensureStorageFile() {
+async function ensureFile(filePath, defaultData) {
     try {
-        await fs.access(STORAGE_FILE);
+        await fs.access(filePath);
     } catch (error) {
-        const defaultItems = [
-            { id: 1, name: 'Item 1', description: 'Description 1' },
-            { id: 2, name: 'Item 2', description: 'Description 2' },
-        ];
-        await fs.writeFile(STORAGE_FILE, JSON.stringify(defaultItems, null, 2));
-        console.log('Storage file created successfully');
+        await fs.writeFile(filePath, JSON.stringify(defaultData, null, 2));
+        console.log(`${filePath} created successfully`);
+    }
+}
+async function updateUsersFile() {
+    const users = [
+        { id: 1, username: 'admin', password: 'admin123', role: 'Admin' },
+        { id: 2, username: 'user', password: 'user123', role: 'User' }
+    ];
+
+    for (const user of users) {
+        user.password = await bcrypt.hash(user.password, 10);
+    }
+
+    await fs.writeFile(USERS_FILE, JSON.stringify(users, null, 2));
+    console.log('Файл users.json оновлено!');
+}
+
+updateUsersFile();
+async function loadFile(filePath) {
+    try {
+        const data = await fs.readFile(filePath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error(`Error loading ${filePath}:`, error);
+        throw new Error(`Failed to load ${filePath}`);
     }
 }
 
+async function saveFile(filePath, data) {
+    try {
+        await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+        console.log(`${filePath} saved successfully`);
+    } catch (error) {
+        console.error(`Error saving ${filePath}:`, error);
+        throw new Error(`Failed to save ${filePath}`);
+    }
+}
+
+async function initializeStorage() {
+    await ensureFile(STORAGE_FILE, [
+        { id: 1, name: 'Item 1', description: 'Description 1' },
+        { id: 2, name: 'Item 2', description: 'Description 2' },
+    ]);
+
+    await ensureFile(USERS_FILE, [
+        { id: 1, username: 'admin', password: await bcrypt.hash('admin123', 10), role: 'Admin' },
+        { id: 2, username: 'user', password: await bcrypt.hash('user123', 10), role: 'User' },
+    ]);
+}
+
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.status(401).json({ message: 'Access token is missing' });
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) return res.status(403).json({ message: 'Invalid token' });
+        req.user = user;
+        next();
+    });
+}
+app.put('/api/items/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    let items = JSON.parse(fs.readFileSync('items.json', 'utf8'));
+
+    const itemIndex = items.findIndex(item => item.id === parseInt(id));
+    if (itemIndex === -1) {
+        return res.status(404).json({ message: 'Товар не знайдено' });
+    }
+
+    items[itemIndex].name = name;
+    items[itemIndex].description = description;
+
+    fs.writeFileSync('items.json', JSON.stringify(items, null, 2));
+
+    res.json({ message: 'Товар оновлено', item: items[itemIndex] });
+});
 async function loadItems() {
     try {
         const data = await fs.readFile(STORAGE_FILE, 'utf8');
@@ -34,7 +111,6 @@ async function loadItems() {
         throw new Error('Failed to load items');
     }
 }
-
 async function saveItems(items) {
     try {
         await fs.writeFile(STORAGE_FILE, JSON.stringify(items, null, 2));
@@ -44,72 +120,6 @@ async function saveItems(items) {
         throw new Error('Failed to save items');
     }
 }
-
-async function initializeStorage() {
-    try {
-        await ensureStorageFile();
-        console.log('Storage initialized successfully');
-    } catch (error) {
-        console.error('Failed to initialize storage:', error);
-        process.exit(1);
-    }
-}
-
-const swaggerOptions = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'Item Management API',
-            version: '1.0.0',
-            description: 'API for managing items',
-        },
-        servers: [
-            {
-                url: 'http://localhost:3000',
-                description: 'Development server',
-            },
-        ],
-    },
-    apis: ['./server.js'],
-};
-
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-/**
- * @swagger
- * /api/items:
- *   get:
- *     summary: Get all items
- *     responses:
- *       200:
- *         description: Returns a list of items
- */
-app.get('/api/items', async (req, res) => {
-    try {
-        const items = await loadItems();
-        res.json(items);
-    } catch (error) {
-        console.error('GET /api/items error:', error);
-        res.status(500).json({ message: 'Error loading items' });
-    }
-});
-/**
- * @swagger
- * /api/items/{id}:
- *   get:
- *     summary: Get an item by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Returns the requested item
- *       404:
- *         description: Item not found
- */
 app.get('/api/items/:id', async (req, res) => {
     try {
         const items = await loadItems();
@@ -121,101 +131,6 @@ app.get('/api/items/:id', async (req, res) => {
         res.status(500).json({ message: 'Error loading item' });
     }
 });
-/**
- * @swagger
- * /api/items:
- *   post:
- *     summary: Create a new item
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *     responses:
- *       201:
- *         description: Item created successfully
- */
-app.post('/api/items', async (req, res) => {
-    try {
-        const items = await loadItems();
-        const newItem = {
-            id: items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1,
-            name: req.body.name,
-            description: req.body.description
-        };
-        items.push(newItem);
-        await saveItems(items);
-        console.log('New item created:', newItem);
-        res.status(201).json(newItem);
-    } catch (error) {
-        console.error('POST /api/items error:', error);
-        res.status(500).json({ message: 'Error creating item' });
-    }
-});
-/**
- * @swagger
- * /api/items/{id}:
- *   patch:
- *     summary: Update an existing item
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *     responses:
- *       200:
- *         description: Item updated successfully
- */
-app.patch('/api/items/:id', async (req, res) => {
-    try {
-        const items = await loadItems();
-        const item = items.find(i => i.id === parseInt(req.params.id));
-        if (!item) return res.status(404).json({ message: 'Item not found' });
-
-        if (req.body.name) item.name = req.body.name;
-        if (req.body.description) item.description = req.body.description;
-
-        await saveItems(items);
-        console.log('Item updated:', item);
-        res.json(item);
-    } catch (error) {
-        console.error('PATCH /api/items/:id error:', error);
-        res.status(500).json({ message: 'Error updating item' });
-    }
-});
-/**
- * @swagger
- * /api/items/{id}:
- *   delete:
- *     summary: Delete an item by ID
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Item deleted successfully
- */
 app.delete('/api/items/:id', async (req, res) => {
     try {
         const items = await loadItems();
@@ -232,11 +147,129 @@ app.delete('/api/items/:id', async (req, res) => {
     }
 });
 
+function authorizeRoles(...roles) {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+        next();
+    };
+}
+
+/**
+ * @swagger
+ * /api/login:
+ *   post:
+ *     summary: User login
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ */
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const users = await loadFile(USERS_FILE);
+        const user = users.find(u => u.username === username);
+
+        if (!user) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        console.log('Введений пароль:', password);
+        console.log('Хешований пароль у файлі:', user.password);
+
+        const match = await bcrypt.compare(password, user.password);
+        console.log('Результат порівняння:', match);
+
+        if (!match) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign({ id: user.id, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
+        res.json({ token });
+    } catch (error) {
+        console.error('POST /api/login error:', error);
+        res.status(500).json({ message: 'Error logging in' });
+    }
+});
+
+
+app.get('/api/admin', authenticateToken, authorizeRoles('Admin'), (req, res) => {
+    res.json({ message: 'Welcome, Admin!' });
+});
+
+app.get('/api/user', authenticateToken, authorizeRoles('User', 'Admin'), (req, res) => {
+    res.json({ message: 'Welcome, User!' });
+});
+
+app.post('/api/items', authenticateToken, authorizeRoles('Admin'), async (req, res) => {
+    try {
+        const items = await loadFile(STORAGE_FILE);
+
+        const newItem = {
+            id: items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1,
+            name: req.body.name,
+            description: req.body.description
+        };
+
+        console.log('Новий товар:', newItem);
+
+        items.push(newItem);
+        await saveFile(STORAGE_FILE, items);
+        res.status(201).json(newItem);
+    } catch (error) {
+        console.error('Помилка додавання товару:', error);
+        res.status(500).json({ message: 'Помилка додавання товару' });
+    }
+});
+app.patch('/api/items/:id', async (req, res) => {
+    try {
+        const items = await loadItems();
+        const item = items.find(i => i.id === parseInt(req.params.id));
+
+        if (!item) {
+            return res.status(404).json({ message: 'Товар не знайдено' });
+        }
+
+        if (req.body.name) item.name = req.body.name;
+        if (req.body.description) item.description = req.body.description;
+
+        await saveItems(items);
+        console.log('Товар оновлено:', item);
+        res.json(item);
+    } catch (error) {
+        console.error('PATCH /api/items/:id error:', error);
+        res.status(500).json({ message: 'Помилка оновлення товару' });
+    }
+});
+
+app.get('/api/items', authenticateToken, async (req, res) => {
+    try {
+        const items = await loadFile(STORAGE_FILE);
+        console.log('Отримані товари:', items);
+        res.json(items);
+    } catch (error) {
+        console.error('Помилка отримання товарів:', error);
+        res.status(500).json({ message: 'Помилка отримання товарів' });
+    }
+});
+
 initializeStorage().then(() => {
     app.listen(PORT, () => {
         console.log(`Server is running on port ${PORT}`);
         console.log(`Swagger documentation available at http://localhost:${PORT}/api-docs`);
-        console.log(`Storage file location: ${STORAGE_FILE}`);
     });
 }).catch(error => {
     console.error('Failed to start server:', error);

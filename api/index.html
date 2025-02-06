@@ -6,6 +6,11 @@
     <title>СКП</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        .item-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
         :root {
             --primary-color: #ffd700;
             --secondary-color: #0057b8;
@@ -60,7 +65,7 @@
             border-radius: 2px;
         }
 
-        .form-container {
+        .form-container, .login-container {
             background: white;
             padding: 2rem;
             border-radius: 15px;
@@ -122,65 +127,12 @@
             transform: translateY(-1px);
         }
 
-        .item-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .item-card {
-            background: white;
-            border-radius: 15px;
-            padding: 1.5rem;
-            box-shadow: var(--card-shadow);
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-
-        .item-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary-color);
-        }
-
-        .item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .item-title {
-            color: var(--secondary-color);
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .item-description {
-            color: var(--text-dark);
-            margin-bottom: 1rem;
-            line-height: 1.5;
-        }
-
-        .item-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .btn-edit {
-            background: var(--primary-color);
-            color: var(--text-dark);
-        }
-
-        .btn-edit:hover {
-            background: #e6c200;
-        }
-
-        .btn-delete {
+        .btn-logout {
             background: var(--error-color);
             color: var(--text-light);
         }
 
-        .btn-delete:hover {
+        .btn-logout:hover {
             background: #c0392b;
         }
 
@@ -197,6 +149,14 @@
             animation: slideIn 0.3s ease-out;
         }
 
+        .success {
+            background: var(--success-color);
+        }
+
+        .error {
+            background: var(--error-color);
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -208,14 +168,6 @@
             }
         }
 
-        .success {
-            background: var(--success-color);
-        }
-
-        .error {
-            background: var(--error-color);
-        }
-
         @media (max-width: 768px) {
             body {
                 padding: 1rem;
@@ -223,10 +175,6 @@
 
             .container {
                 padding: 1rem;
-            }
-
-            .item-list {
-                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -237,8 +185,29 @@
 
     <div id="notification" class="notification"></div>
 
-    <div class="form-container">
+    <!-- Блок для входу -->
+    <div class="login-container" id="loginContainer">
+        <h2 class="form-title">Вхід</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Ім'я користувача:</label>
+                <input type="text" id="username" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль:</label>
+                <input type="password" id="password" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Увійти</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Форма для додавання елементів -->
+    <div class="form-container" id="itemContainer" style="display: none;">
         <h2 class="form-title" id="formTitle">Додати новий продукт</h2>
+        <button class="btn btn-logout" id="logoutButton">Вийти</button>
         <form id="itemForm">
             <input type="hidden" id="itemId">
             <div class="form-group">
@@ -253,30 +222,22 @@
                 <i class="fas fa-save"></i>
                 <span>Зберегти</span>
             </button>
+            <h2 class="form-title">Список збережених продуктів</h2>
+            <div id="itemsList" class="item-list"></div>
         </form>
     </div>
-
-    <h2 class="form-title">Список збережених продуктів</h2>
-    <div id="itemsList" class="item-list"></div>
 </div>
 
 <script>
     const API_URL = 'http://localhost:3000/api/items';
-    let editMode = false;
-
-    function showNotification(message, type) {
-        const notification = document.getElementById('notification');
-        notification.textContent = message;
-        notification.className = `notification ${type}`;
-        notification.style.display = 'block';
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 3000);
-    }
-
+    const LOGIN_URL = 'http://localhost:3000/api/login';
+    let token = localStorage.getItem('token');
+    let editMode = false
     async function fetchItems() {
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(API_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const items = await response.json();
             const itemsList = document.getElementById('itemsList');
             itemsList.innerHTML = '';
@@ -291,12 +252,10 @@
                     <p class="item-description">${item.description}</p>
                     <div class="item-actions">
                         <button class="btn btn-edit" onclick="editItem(${item.id})">
-                            <i class="fas fa-edit"></i>
-                            Редагувати
+                            <i class="fas fa-edit"></i> Редагувати
                         </button>
                         <button class="btn btn-delete" onclick="deleteItem(${item.id})">
-                            <i class="fas fa-trash-alt"></i>
-                            Видалити
+                            <i class="fas fa-trash-alt"></i> Видалити
                         </button>
                     </div>
                 `;
@@ -306,7 +265,104 @@
             showNotification('Помилка завантаження елементів: ' + error.message, 'error');
         }
     }
+    function showNotification(message, type) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        notification.style.display = 'block';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
+    }
+    async function addItem(event) {
+        event.preventDefault();
+        const name = document.getElementById('name').value;
+        const description = document.getElementById('description').value;
+        const itemId = document.getElementById('itemId').value;
 
+        const method = itemId ? 'PUT' : 'POST';
+        const url = itemId ? `${API_URL}/${itemId}` : API_URL;
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name, description })
+            });
+
+            if (!response.ok) throw new Error('Помилка збереження товару');
+            fetchItems();
+            showNotification(itemId ? 'Товар оновлено!' : 'Товар додано!', 'success');
+            document.getElementById('itemForm').reset();
+            document.getElementById('itemId').value = '';
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    }
+    async function editItem(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`);
+            const item = await response.json();
+
+            document.getElementById('itemId').value = item.id;
+            document.getElementById('name').value = item.name;
+            document.getElementById('description').value = item.description;
+            document.getElementById('formTitle').textContent = 'Редагувати елемент';
+            editMode = true;
+        } catch (error) {
+            showNotification('Помилка завантаження елемента: ' + error.message, 'error');
+        }
+    }
+
+
+    async function deleteItem(id) {
+        if (confirm('Ви впевнені, що хочете видалити цей елемент?')) {
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (response.ok) {
+                    showNotification('Елемент успішно видалено!', 'success');
+                    fetchItems();
+                } else {
+                    throw new Error('Не вдалося видалити елемент');
+                }
+            } catch (error) {
+                showNotification('Помилка видалення: ' + error.message, 'error');
+            }
+        }
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch(LOGIN_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                token = data.token;
+                localStorage.setItem('token', token);
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('itemContainer').style.display = 'block';
+                showNotification('Вхід успішний!', 'success');
+            } else {
+                throw new Error('Невірні дані для входу');
+            }
+        } catch (error) {
+            showNotification('Помилка входу: ' + error.message, 'error');
+        }
+    });
     document.getElementById('itemForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const itemId = document.getElementById('itemId').value;
@@ -343,42 +399,20 @@
             showNotification('Помилка збереження: ' + error.message, 'error');
         }
     });
+    document.getElementById('logoutButton').addEventListener('click', () => {
+        token = null;
+        localStorage.removeItem('token');
+        document.getElementById('loginContainer').style.display = 'block';
+        document.getElementById('itemContainer').style.display = 'none';
+        showNotification('Ви успішно вийшли!', 'success');
+    });
 
-    async function editItem(id) {
-        try {
-            const response = await fetch(`${API_URL}/${id}`);
-            const item = await response.json();
-
-            document.getElementById('itemId').value = item.id;
-            document.getElementById('name').value = item.name;
-            document.getElementById('description').value = item.description;
-            document.getElementById('formTitle').textContent = 'Редагувати елемент';
-            editMode = true;
-        } catch (error) {
-            showNotification('Помилка завантаження елемента: ' + error.message, 'error');
-        }
+    if (token) {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('itemContainer').style.display = 'block';
     }
-
-    async function deleteItem(id) {
-        if (confirm('Ви впевнені, що хочете видалити цей елемент?')) {
-            try {
-                const response = await fetch(`${API_URL}/${id}`, {
-                    method: 'DELETE',
-                });
-
-                if (response.ok) {
-                    showNotification('Елемент успішно видалено!', 'success');
-                    fetchItems();
-                } else {
-                    throw new Error('Не вдалося видалити елемент');
-                }
-            } catch (error) {
-                showNotification('Помилка видалення: ' + error.message, 'error');
-            }
-        }
-    }
-
-    fetchItems();
+    document.getElementById('itemForm').addEventListener('submit', addItem);
+    if (token) fetchItems();
 </script>
 </body>
 </html>
