@@ -182,10 +182,7 @@
 <body>
 <div class="container">
     <h1 class="header">СКП</h1>
-
     <div id="notification" class="notification"></div>
-
-    <!-- Блок для входу -->
     <div class="login-container" id="loginContainer">
         <h2 class="form-title">Вхід</h2>
         <form id="loginForm">
@@ -203,8 +200,6 @@
             </button>
         </form>
     </div>
-
-    <!-- Форма для додавання елементів -->
     <div class="form-container" id="itemContainer" style="display: none;">
         <h2 class="form-title" id="formTitle">Додати новий продукт</h2>
         <button class="btn btn-logout" id="logoutButton">Вийти</button>
@@ -227,7 +222,6 @@
         </form>
     </div>
 </div>
-
 <script>
     const API_URL = 'http://localhost:3000/api/items';
     const LOGIN_URL = 'http://localhost:3000/api/login';
